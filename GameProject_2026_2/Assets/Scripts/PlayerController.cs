@@ -1,6 +1,14 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+public enum PlayerState
+{
+
+    Normal,
+    Pickup,
+
+}
+
 public class PlayerController : MonoBehaviour
 {
     [SerializeField] private Animator animator;         //애니메이터
@@ -16,6 +24,8 @@ public class PlayerController : MonoBehaviour
 
     private CharacterController controller;              //유니티의 캐릭터 컨트롤러 접근
     private float verticalVeolocity;                 //수평이동의 속도값 정의
+
+    private PlayerState currentState = PlayerState.Normal;
 
     private void Awake()
     {
@@ -40,6 +50,19 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
+        //상태와 관계없이 중력은 계속 적용
+        ApplyGravity();
+
+        //
+        if (currentState != PlayerState.Normal) return;
+
+        HandleMovement(keyboard);
+
+        
+    }
+
+    private void HandleMovement(Keyboard keyboard)
+    {
         Vector2 input = Vector2.zero;
 
         if (keyboard.aKey.isPressed)
@@ -84,7 +107,7 @@ public class PlayerController : MonoBehaviour
         }
 
         //7.
-        if(controller.isGrounded && verticalVeolocity < 0f)
+        if (controller.isGrounded && verticalVeolocity < 0f)
         {
             verticalVeolocity = -2f;
         }
@@ -104,5 +127,30 @@ public class PlayerController : MonoBehaviour
         }
 
         animator.SetFloat("speed", animationSpeed, 0.1f, Time.deltaTime);
+    }
+
+    private void ApplyGravity()
+    {
+        if (controller.isGrounded && verticalVeolocity < 0f)
+        {
+            verticalVeolocity = -2f;
+        }
+        else
+        {
+            verticalVeolocity += gravity * Time.deltaTime;
+        }
+        controller.Move(Vector3.up * verticalVeolocity * Time.deltaTime);
+    }
+
+    public void ChangeState(PlayerState newState)
+    {
+        currentState = newState;
+
+        if(currentState != PlayerState.Normal)
+        {
+            animator.SetFloat("speed", 0);
+        }
+
+        Debug.Log("현재 상태 : " + currentState);
     }
 }
