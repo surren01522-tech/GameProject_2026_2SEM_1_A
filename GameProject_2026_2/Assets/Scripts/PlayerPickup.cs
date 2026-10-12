@@ -7,6 +7,8 @@ public class PlayerPickup : MonoBehaviour
     [Header("직접 연결")]
     [SerializeField] private Animator animator;
     [SerializeField] private PlayerController playerController;
+    [SerializeField] private InteractionUI interactionUI;
+
     [Header("아이템 탐색")]
     [SerializeField] private float detectionRadius = 2f;
     [Header("줍기 모션")]
@@ -14,6 +16,8 @@ public class PlayerPickup : MonoBehaviour
     [SerializeField] private float pickupMoment = 0.55f;
 
     private PickupItem targetItem;
+    private Door targetDoor;
+    private NPC targetNPC;
     private bool isPickingUp;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -27,16 +31,38 @@ public class PlayerPickup : MonoBehaviour
     {
         if (isPickingUp) return;
 
-        //player 주변에서 가장 가까운 아이템을 찾는다.
-        targetItem = FindClosestItem();
+        
+        targetItem = FindClosestItem();                         //player 주변에서 가장 가까운 아이템을 찾는다.
+        targetDoor = FindClosestDoor();                         //player 주변에서 가장 가까운 문을 찾는다.
+        targetNPC = FindClosestNPC();                           //player 주변에서 가장 가까운 NPC을 찾는다.
 
-        if (targetItem == null) return;
+        ShowGuide();
 
         Keyboard keyboard = Keyboard.current;
 
+        if (keyboard == null) return;
+
+        if (targetItem == null && targetDoor == null && targetNPC == null) return;
+
         if (keyboard.eKey.wasPressedThisFrame)
         {
+            Interact();
+        }
+    }
+
+    private void Interact()
+    {
+        if (targetItem != null)
+        {
             StartCoroutine(PickupAnimation());
+        }
+        else if (targetDoor != null)
+        {
+            targetDoor.Interact();
+        }
+        else if(targetNPC != null)
+        {
+            interactionUI.ShowDialogue(targetNPC.GetNPCName(), targetNPC.GetMessage());  //다이얼로그 오픈
         }
     }
 
@@ -63,9 +89,57 @@ public class PlayerPickup : MonoBehaviour
         return closestItem;
     }
 
+    private Door FindClosestDoor()
+    {
+        Collider[] colliders = Physics.OverlapSphere(transform.position, detectionRadius, ~0, QueryTriggerInteraction.Collide);
+        Door closestDoor = null;
+        float closestDistance = Mathf.Infinity;
+
+        foreach (Collider targetCollider in colliders)
+        {
+            Door door = targetCollider.GetComponentInParent<Door>();
+
+            if (door == null) continue;
+
+            float distance = Vector3.Distance(transform.position, door.transform.position);
+
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                closestDoor = door;
+            }
+        }
+        return closestDoor;
+    }
+
+    private NPC FindClosestNPC()
+    {
+        Collider[] colliders = Physics.OverlapSphere(transform.position, detectionRadius, ~0, QueryTriggerInteraction.Collide);
+        NPC closestNPC = null;
+        float closestDistance = Mathf.Infinity;
+
+        foreach (Collider targetCollider in colliders)
+        {
+            NPC npc = targetCollider.GetComponentInParent<NPC>();
+
+            if (npc == null) continue;
+
+            float distance = Vector3.Distance(transform.position, npc.transform.position);
+
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                closestNPC = npc;
+            }
+        }
+        return closestNPC;
+    }
+
     private IEnumerator PickupAnimation()
     {
         isPickingUp = true;
+
+        interactionUI.HideGuide();
 
         //현재 찾은 아이템을 저장한다.
         PickupItem itemToCollect = targetItem;
@@ -102,6 +176,29 @@ public class PlayerPickup : MonoBehaviour
         playerController.ChangeState(PlayerState.Normal);
 
         targetItem = null;
+        targetDoor = null;
+        targetNPC = null;
         isPickingUp = false;
     }
+
+    private void ShowGuide()
+    {
+        if(targetItem != null)
+        {
+            interactionUI.ShowGuide("[E] " + targetItem.GetItemName() + "줍기");
+        }
+        else if(targetDoor != null)
+        {
+            interactionUI.ShowGuide(targetDoor.GetGuideText());
+        }
+        else if(targetNPC != null)
+        {
+            interactionUI.ShowGuide(targetNPC.GetGuideText());
+        }
+        else
+        {
+            interactionUI.HideGuide();
+        }
+    }
+
 }
