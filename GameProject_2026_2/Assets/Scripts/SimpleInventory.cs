@@ -29,10 +29,13 @@ public class SimpleInventory : MonoBehaviour
     [SerializeField] private int selectedIndex = -1;
     //-1 : 선택 없음, 0: 첫번째 슬롯, 1; 두번째 슬롯
 
+    private AchievementManager achievementManager;
+
     private void Awake()
     {
         playerController = GetComponent<PlayerController>();
         playerPickup = GetComponent<PlayerPickup>();
+        achievementManager = FindAnyObjectByType<AchievementManager>();
 
         if (Camera.main != null)
         {
@@ -215,6 +218,12 @@ public class SimpleInventory : MonoBehaviour
         }
 
         playerHealth.Heal(healAmount);
+
+        if (achievementManager != null)
+        {
+            achievementManager.ItemUsed(item.itemName);
+        }
+
         RemoveItem(item.itemName, 1);
     }
 
@@ -223,7 +232,13 @@ public class SimpleInventory : MonoBehaviour
         if (selectedIndex < 0 || selectedIndex >= items.Count) return;
 
         string itemName = items[selectedIndex].itemName;
-        RemoveItem(itemName, 1);
+        if (RemoveItem(itemName, 1))
+        {
+            if (achievementManager != null)
+            {
+                achievementManager.ItemDropped();
+            }
+        }
     }
 
     public int GetItemAmount(string itemName)
